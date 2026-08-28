@@ -82,6 +82,9 @@ android {
 }
 
 dependencies {
+    // Gleiche BOM wie :app - siehe Kommentar dort.
+    implementation(platform(libs.androidx.compose.bom))
+
     implementation(libs.androidx.activity.compose)
     implementation(libs.wear.compose.material)
     implementation(libs.wear.compose.foundation)

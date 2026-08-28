@@ -7,7 +7,7 @@ import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.lifecycle.viewmodel.compose.viewModel
 import org.dwarftsch.wickel.ui.HomeScreen
@@ -22,7 +22,11 @@ class MainActivity : ComponentActivity() {
         setContent {
             WickelTheme {
                 val viewModel: HomeViewModel = viewModel()
-                var zeigeEinstellungen by remember { mutableStateOf(false) }
+                // rememberSaveable: legt Android die Activity neu an (Drehen,
+                // Dark-Mode-Wechsel, Rueckkehr aus dem Datei-Dialog), bleibt
+                // man in den Einstellungen statt unbemerkt auf der Startseite
+                // zu landen.
+                var zeigeEinstellungen by rememberSaveable { mutableStateOf(false) }
 
                 if (zeigeEinstellungen) {
                     // Beim Verlassen der Einstellungen die (womöglich neue)

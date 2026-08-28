@@ -80,6 +80,13 @@ android {
     buildFeatures {
         compose = true
     }
+    testOptions {
+        unitTests {
+            // Die Regressionstests fuer den Einstellungen-Bildschirm laufen
+            // ueber Robolectric auf der JVM und brauchen echte Ressourcen.
+            isIncludeAndroidResources = true
+        }
+    }
 }
 
 dependencies {
@@ -89,8 +96,17 @@ dependencies {
     implementation(libs.androidx.core.ktx)
     implementation(libs.material)
 
+    // Haelt alle androidx.compose.*-Artefakte auf demselben Stand. Ohne die
+    // BOM zogen activity-compose und lifecycle ui/runtime auf 1.9.x, waehrend
+    // material3 foundation/animation auf 1.7.0 hielt.
+    implementation(platform(libs.androidx.compose.bom))
+    androidTestImplementation(platform(libs.androidx.compose.bom))
+    testImplementation(platform(libs.androidx.compose.bom))
+
     implementation(libs.androidx.activity.compose)
     implementation(libs.androidx.compose.material3)
+    implementation(libs.androidx.compose.foundation)
+    implementation(libs.androidx.compose.ui)
     implementation(libs.androidx.compose.icons.extended)
     implementation(libs.androidx.lifecycle.viewmodel.compose)
     implementation(libs.kotlinx.coroutines.android)
@@ -103,6 +119,11 @@ dependencies {
     implementation(libs.androidx.documentfile)
 
     testImplementation(libs.junit)
+    testImplementation(libs.robolectric)
+    testImplementation(libs.androidx.test.core.ktx)
+    testImplementation(libs.androidx.junit)
+    testImplementation(libs.androidx.compose.ui.test.junit4)
+    debugImplementation(libs.androidx.compose.ui.test.manifest)
     androidTestImplementation(libs.androidx.espresso.core)
     androidTestImplementation(libs.androidx.junit)
 }
