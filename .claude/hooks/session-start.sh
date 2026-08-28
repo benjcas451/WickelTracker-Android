@@ -101,13 +101,15 @@ if ! grep -qs "^sdk.dir=" "$PROJEKT/local.properties" 2>/dev/null; then
 fi
 
 # --- 4. Umgebung fuer die Sitzung festhalten ------------------------------
-if [ -n "${CLAUDE_ENV_FILE:-}" ]; then
-  {
-    echo "export ANDROID_HOME=\"$SDK_ROOT\""
-    echo "export ANDROID_SDK_ROOT=\"$SDK_ROOT\""
-    echo "export JAVA_HOME=\"$JAVA_25\""
-  } >> "$CLAUDE_ENV_FILE"
-fi
+# Der Hook feuert auch bei resume/clear/compact - deshalb nur ergaenzen, was
+# noch nicht drinsteht, statt die Datei bei jedem Lauf zu verlaengern.
+setze_env() {
+  [ -n "${CLAUDE_ENV_FILE:-}" ] || return 0
+  grep -qs "^export $1=" "$CLAUDE_ENV_FILE" || echo "export $1=\"$2\"" >> "$CLAUDE_ENV_FILE"
+}
+setze_env ANDROID_HOME "$SDK_ROOT"
+setze_env ANDROID_SDK_ROOT "$SDK_ROOT"
+setze_env JAVA_HOME "$JAVA_25"
 
 # --- 5. Gradle-Cache vorwaermen -------------------------------------------
 # Nicht kritisch: schlaegt das fehl, soll die Sitzung trotzdem starten - SDK
