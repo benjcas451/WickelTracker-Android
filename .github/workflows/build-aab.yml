@@ -67,18 +67,18 @@ jobs:
         with:
           repo_token: ${{ secrets.GITHUB_TOKEN }}
           file: app/build/outputs/apk/release/app-release.apk
-          asset_name: Wickel-v2.0.0-${{ github.run_number }}.apk
-          tag: v2.0.0-${{ github.run_number }}
+          asset_name: Wickel-v2.0.1-${{ github.run_number }}.apk
+          tag: v2.0.1-${{ github.run_number }}
           overwrite: true
-          body: "Wickel-Tracker v2.0.0 (Lauf ${{ github.run_number }}) – signierte APKs für Handy und Wear OS (Play-Upload erfolgt als App Bundle)"
+          body: "Wickel-Tracker v2.0.1 (Lauf ${{ github.run_number }}) – signierte APKs für Handy und Wear OS (Play-Upload erfolgt als App Bundle)"
 
       - name: Wear-APK an dasselbe Release anhängen
         uses: svenstaro/upload-release-action@v2
         with:
           repo_token: ${{ secrets.GITHUB_TOKEN }}
           file: wear/build/outputs/apk/release/wear-release.apk
-          asset_name: Wickel-Wear-v2.0.0-${{ github.run_number }}.apk
-          tag: v2.0.0-${{ github.run_number }}
+          asset_name: Wickel-Wear-v2.0.1-${{ github.run_number }}.apk
+          tag: v2.0.1-${{ github.run_number }}
           overwrite: true
 
       # Handy- und Uhr-Bundle MÜSSEN in getrennten Schritten (= getrennten
