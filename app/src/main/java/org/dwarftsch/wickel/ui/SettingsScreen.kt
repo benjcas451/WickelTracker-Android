@@ -65,6 +65,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.dp
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -73,6 +74,16 @@ import org.dwarftsch.wickel.data.CertSource
 import org.dwarftsch.wickel.data.DataSourceMode
 import org.dwarftsch.wickel.data.DemoService
 import org.dwarftsch.wickel.data.LocalBackupService
+
+/**
+ * Was der Bildschirm über die mTLS-Zertifikate anzeigt. Beides wird gemeinsam
+ * im Hintergrund ermittelt, damit die Composition weder Dateien liest noch
+ * `persistedUriPermissions` beim System erfragt.
+ */
+private data class ZertifikatsStand(
+    val gefunden: Boolean = false,
+    val ordner: String? = null,
+)
 
 /** Beschreibung der REST-API (für den Dialog "Aufbau API"). */
 private const val API_INFO_TEXT = """
@@ -160,7 +171,11 @@ fun SettingsScreen(
     var apiKeyUrl by remember { mutableStateOf(settings.apiKeyBaseUrl) }
     var apiKey by remember { mutableStateOf(settings.apiKey) }
     var apiKeySichtbar by remember { mutableStateOf(false) }
-    var certsOk by remember { mutableStateOf(false) }
+    // Zertifikats-Status *und* Ordnername zusammen: `CertSource.locationLabel`
+    // fragt `persistedUriPermissions` beim System ab (Binder-Aufruf). Das darf
+    // nicht bei jeder Recomposition passieren – und der Stoffwindel-Schalter
+    // loest genau die aus.
+    var zertifikate by remember { mutableStateOf(ZertifikatsStand()) }
     var beschaeftigt by remember { mutableStateOf(false) }
     var infoDialog by remember { mutableStateOf<Pair<String, String>?>(null) }
     var restoreBestaetigen by remember { mutableStateOf(false) }
@@ -170,29 +185,49 @@ fun SettingsScreen(
         scope.launch { snackbar.showSnackbar(text) }
     }
 
-    suspend fun pruefeZertifikate(): Boolean =
-        runCatching { certSource.readCredentials() }.isSuccess
+    suspend fun pruefeZertifikate(): ZertifikatsStand = withContext(Dispatchers.IO) {
+        // Kein runCatching: das schluckt auch die CancellationException, mit der
+        // Compose den Effekt beim Verlassen des Bildschirms abbricht. Die muss
+        // weiterfliegen, sonst laeuft die Coroutine nach dem Zurueck weiter und
+        // schreibt in einen Zustand, den es nicht mehr gibt.
+        val gefunden = try {
+            certSource.readCredentials()
+            true
+        } catch (abbruch: CancellationException) {
+            throw abbruch
+        } catch (fehler: Exception) {
+            false
+        }
+        ZertifikatsStand(gefunden = gefunden, ordner = certSource.locationLabel)
+    }
 
-    LaunchedEffect(Unit) { certsOk = pruefeZertifikate() }
+    LaunchedEffect(Unit) { zertifikate = pruefeZertifikate() }
+
+    // Die Contracts einmal merken: `rememberLauncherForActivityResult` nimmt den
+    // Contract als Schluessel seines DisposableEffect. Ein bei jeder Recomposition
+    // neu erzeugter Contract meldet den Launcher deshalb jedes Mal ab und wieder
+    // an – und verliert dabei ein bereits laufendes Ergebnis.
+    val ordnerContract = remember { ActivityResultContracts.OpenDocumentTree() }
+    val speichernContract = remember { ActivityResultContracts.CreateDocument("application/json") }
+    val oeffnenContract = remember { ActivityResultContracts.OpenDocument() }
 
     // Ordner-Auswahl für die mTLS-Zertifikate (Storage Access Framework).
-    val ordnerWahl = rememberLauncherForActivityResult(
-        ActivityResultContracts.OpenDocumentTree(),
-    ) { uri ->
+    val ordnerWahl = rememberLauncherForActivityResult(ordnerContract) { uri ->
         if (uri != null) {
-            runCatching { certSource.uebernehmeOrdner(uri) }
-                .onFailure { zeige("Fehler bei der Ordnerauswahl: ${it.meldung()}") }
             scope.launch {
-                certsOk = pruefeZertifikate()
-                zeige(if (certsOk) "Zertifikate gefunden." else "Keine Zertifikate gefunden.")
+                val uebernommen = runCatching { certSource.uebernehmeOrdner(uri) }
+                    .onFailure { zeige("Fehler bei der Ordnerauswahl: ${it.meldung()}") }
+                    .isSuccess
+                zertifikate = pruefeZertifikate()
+                if (uebernommen) {
+                    zeige(if (zertifikate.gefunden) "Zertifikate gefunden." else "Keine Zertifikate gefunden.")
+                }
             }
         }
     }
 
     // Backup-Export: Ziel-Datei über den System-Speichern-Dialog wählen.
-    val backupSpeichern = rememberLauncherForActivityResult(
-        ActivityResultContracts.CreateDocument("application/json"),
-    ) { uri ->
+    val backupSpeichern = rememberLauncherForActivityResult(speichernContract) { uri ->
         if (uri != null) {
             beschaeftigt = true
             scope.launch {
@@ -213,9 +248,7 @@ fun SettingsScreen(
     }
 
     // Backup-Restore: Quelldatei wählen, validieren, Bestand ersetzen.
-    val backupOeffnen = rememberLauncherForActivityResult(
-        ActivityResultContracts.OpenDocument(),
-    ) { uri ->
+    val backupOeffnen = rememberLauncherForActivityResult(oeffnenContract) { uri ->
         if (uri != null) {
             beschaeftigt = true
             scope.launch {
@@ -333,15 +366,25 @@ fun SettingsScreen(
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
                     Icon(
-                        if (certsOk) Icons.Filled.CheckCircle else Icons.Filled.Cancel,
+                        if (zertifikate.gefunden) Icons.Filled.CheckCircle else Icons.Filled.Cancel,
                         contentDescription = null,
-                        tint = if (certsOk) MinzeHonig.farben.erfolg else MaterialTheme.colorScheme.error,
+                        tint = if (zertifikate.gefunden) {
+                            MinzeHonig.farben.erfolg
+                        } else {
+                            MaterialTheme.colorScheme.error
+                        },
                     )
                     Spacer(Modifier.width(12.dp))
                     Column {
-                        Text(if (certsOk) "Zertifikate gefunden" else "Keine Zertifikate gefunden")
                         Text(
-                            certSource.locationLabel ?: "Kein Ordner ausgewählt",
+                            if (zertifikate.gefunden) {
+                                "Zertifikate gefunden"
+                            } else {
+                                "Keine Zertifikate gefunden"
+                            },
+                        )
+                        Text(
+                            zertifikate.ordner ?: "Kein Ordner ausgewählt",
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
@@ -358,8 +401,14 @@ fun SettingsScreen(
                     }
                     OutlinedButton(shape = MaterialTheme.shapes.medium, colors = ButtonDefaults.outlinedButtonColors(contentColor = MinzeHonig.farben.gruenText), onClick = {
                         scope.launch {
-                            certsOk = pruefeZertifikate()
-                            zeige(if (certsOk) "Zertifikate gefunden." else "Keine Zertifikate gefunden.")
+                            zertifikate = pruefeZertifikate()
+                            zeige(
+                                if (zertifikate.gefunden) {
+                                    "Zertifikate gefunden."
+                                } else {
+                                    "Keine Zertifikate gefunden."
+                                },
+                            )
                         }
                     }) {
                         Icon(Icons.Filled.Refresh, contentDescription = null, modifier = Modifier.size(18.dp))

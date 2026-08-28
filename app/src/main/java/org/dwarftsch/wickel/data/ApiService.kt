@@ -1,6 +1,9 @@
 package org.dwarftsch.wickel.data
 
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import okhttp3.HttpUrl
 import okhttp3.HttpUrl.Companion.toHttpUrlOrNull
@@ -52,10 +55,22 @@ class ApiService(
         return builder.build().also { client = it }
     }
 
+    /**
+     * `dispose()` kommt aus dem UI-Thread (Zurück aus den Einstellungen).
+     * `evictAll()` schließt dabei offene TLS-Sockets und `shutdown()` wartet
+     * auf den Dispatcher — beides blockierende Arbeit, die nicht auf den
+     * Main-Thread gehört. Deshalb läuft das Aufräumen im Hintergrund; der
+     * Client wird sofort losgelassen, damit niemand ihn weiterbenutzt.
+     */
     override fun dispose() {
-        client?.dispatcher?.executorService?.shutdown()
-        client?.connectionPool?.evictAll()
+        val alt = client ?: return
         client = null
+        aufraeumScope.launch {
+            runCatching {
+                alt.dispatcher.executorService.shutdown()
+                alt.connectionPool.evictAll()
+            }
+        }
     }
 
     private fun apiUrl(action: String): HttpUrl {
@@ -167,6 +182,9 @@ class ApiService(
     }
 
     private companion object {
+        /** Hintergrund-Scope zum Freigeben der HTTP-Ressourcen. */
+        val aufraeumScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
+
         /** Kürzt eine (Fehler-)Antwort für die Anzeige. */
         fun snippet(s: String): String {
             val clean = s.replace(Regex("\\s+"), " ").trim()
