@@ -44,30 +44,6 @@ Telefon-Emulator die Telefon-App ersetzen. Immer gezielt per
    Bundles ab. Ohne `key.properties` signieren Release-Builds automatisch
    mit dem Debug-Key (lokal baubar, aber nicht Play-tauglich).
 
-## Einrichtung in einer Cloud-Umgebung (Claude Code on the web)
-
-`.claude/hooks/session-start.sh` läuft beim Start jeder Web-Sitzung und
-richtet den Container vollständig ein — lokal tut das Skript nichts (es
-prüft `CLAUDE_CODE_REMOTE`). Es installiert:
-
-* **JDK 25** über apt. `gradle/gradle-daemon-jvm.properties` verlangt genau
-  diese Version; ohne ein lokal installiertes JDK 25 versucht Gradle, sich
-  eines über `api.foojay.io` zu holen — und das ist in der Standard-Umgebung
-  netzseitig geblockt, der Build bricht dann ab, bevor er anfängt.
-* **Android SDK** — cmdline-tools, platform-tools sowie Plattform und
-  Build-Tools passend zum `compileSdk` aus `app/build.gradle.kts` (wird aus
-  der Datei gelesen, läuft bei einem API-Sprung also nicht auseinander).
-* **`local.properties`** mit `sdk.dir` (gitignored).
-
-Anschließend wärmt es den Gradle-Cache vor (Build beider Module,
-Unit-Tests, Lint), damit die erste echte Aufgabe nicht erst mehrere hundert
-Artefakte lädt. Die Unit-Tests laufen bewusst mit: Robolectric holt seinen
-`android-all`-Jar erst zur Testlaufzeit.
-
-Das Vorwärmen ist nicht kritisch — schlägt es fehl (Maven Central antwortet
-bei einem Kaltstart schon mal mit HTTP 429), startet die Sitzung trotzdem,
-SDK und JDK stehen dann bereits.
-
 ## Bauen & Testen
 
 ```bash
