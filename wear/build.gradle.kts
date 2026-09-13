@@ -40,8 +40,8 @@ android {
         // waehrend die Handy-App auf 37 ging.
         targetSdk = 37
         versionCode = wearVersionCodeOffset +
-            ((findProperty("buildNumber") as String?)?.toIntOrNull() ?: 11)
-        versionName = "2.0.1"
+            ((findProperty("buildNumber") as String?)?.toIntOrNull() ?: 12)
+        versionName = "2.1.0"
     }
 
     signingConfigs {

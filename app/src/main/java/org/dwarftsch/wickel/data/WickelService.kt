@@ -52,5 +52,12 @@ fun createConfiguredWickelService(context: Context, settings: AppSettings, certS
             baseUrl = settings.apiKeyBaseUrl,
             apiKey = settings.apiKey,
         )
+        // Cloudflare Access sichert den Zugang am Rand; der API-Key geht wie
+        // in den anderen Server-Modi mit — die api.php verlangt ihn auch dort.
+        DataSourceMode.CLOUDFLARE -> ApiService(
+            baseUrl = settings.cloudflareBaseUrl,
+            apiKey = settings.apiKey,
+            cfToken = settings.cfServiceToken(),
+        )
         DataSourceMode.DEMO -> DemoService(context)
     }
