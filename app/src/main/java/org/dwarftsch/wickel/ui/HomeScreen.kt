@@ -25,6 +25,8 @@ import androidx.compose.material.icons.filled.History
 import androidx.compose.material.icons.filled.LocalLaundryService
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material.icons.outlined.CloudOff
+import androidx.compose.material.icons.outlined.CloudUpload
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
@@ -158,6 +160,14 @@ private fun Inhalt(
         modifier = Modifier.fillMaxSize(),
         contentPadding = PaddingValues(16.dp),
     ) {
+        // Offline-Hinweis über allem: der Nutzer soll sofort sehen, dass er
+        // zwar weiterarbeiten kann, der Stand aber noch nicht beim Server ist.
+        if (state.offlineGrund != null || state.ausstehend > 0) {
+            item(key = "offline") {
+                OfflineBanner(grund = state.offlineGrund, ausstehend = state.ausstehend)
+                Spacer(Modifier.height(12.dp))
+            }
+        }
         state.stats?.let { stats ->
             item(key = "zuletzt") {
                 LetzterEintragKarte(
@@ -469,5 +479,51 @@ internal fun relativ(zeit: Instant): String {
         differenz.toMinutes() < 60 -> "vor ${differenz.toMinutes()} min"
         differenz.toHours() < 24 -> "vor ${differenz.toHours()} h"
         else -> "vor ${differenz.toDays()} d"
+    }
+}
+
+/**
+ * Hinweisleiste über dem Inhalt: Verbindung weg, App weiter benutzbar.
+ *
+ * [grund] null bedeutet „wieder online, aber es wartet noch etwas auf die
+ * Übertragung“.
+ */
+@Composable
+private fun OfflineBanner(grund: String?, ausstehend: Int) {
+    val titel = if (grund == null) "Übertragung läuft" else "Offline-Modus – $grund"
+    val untertitel = when (ausstehend) {
+        0 -> "Angezeigt wird der zuletzt geladene Stand."
+        1 -> "Ein Eintrag wartet auf die Übertragung und geht raus, sobald die Verbindung steht."
+        else ->
+            "$ausstehend Einträge warten auf die Übertragung und gehen raus, " +
+                "sobald die Verbindung steht."
+    }
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        shape = MaterialTheme.shapes.large,
+        colors = CardDefaults.cardColors(containerColor = MinzeHonig.farben.hinweisFlaeche),
+    ) {
+        Row(modifier = Modifier.padding(12.dp), verticalAlignment = Alignment.Top) {
+            Icon(
+                if (grund == null) Icons.Outlined.CloudUpload else Icons.Outlined.CloudOff,
+                contentDescription = null,
+                tint = MinzeHonig.farben.hinweis,
+                modifier = Modifier.size(20.dp),
+            )
+            Spacer(Modifier.width(10.dp))
+            Column {
+                Text(
+                    titel,
+                    style = MaterialTheme.typography.bodyMedium,
+                    fontWeight = FontWeight.Bold,
+                    color = MinzeHonig.farben.hinweis,
+                )
+                Text(
+                    untertitel,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MinzeHonig.farben.hinweis,
+                )
+            }
+        }
     }
 }

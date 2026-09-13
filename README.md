@@ -158,6 +158,11 @@ Models.kt                    WickelType/PeriodStats(%)/LastEntry/WickelStats, IS
 data/WickelService.kt        Interface der Datenquellen + Factory
 data/DemoService.kt          lokale SQLite (sqflite-kompatibel, v2)
 data/ApiService.kt           REST-Client (OkHttp; api.php-Actions + mTLS)
+data/Netzfehler.kt           Einordnung: nie gesendet vs. mehrdeutig
+data/OfflineService.kt       Offline-Hülle, Warteschlange + Lesestand,
+                             Verbindungswache (ConnectivityManager)
+data/CloudflareServiceToken.kt Service-Token-Header + Erkennung der
+                             Access-Abweisung (Redirect auf die Login-Seite)
 data/ClientCertificates.kt   PEM (crt/key) -> SSLSocketFactory, inkl. PKCS#1->#8
 data/CertSource.kt           SAF-Ordner mit client.crt/client.key
 data/AppSettings.kt          Prefs + Flutter-Migration (inkl. Bool)
@@ -167,8 +172,59 @@ ui/…                         Compose-UI (Theme, Home, Settings, Dialoge)
 ```
 
 **Datenquellen (vom Nutzer wählbar):** Server per mTLS-Client-Zertifikat,
-Server per API-Key oder lokale SQLite ohne Sync. Die `api.php` verlangt
-den **API-Key in jedem Fall** — auch hinter mTLS.
+Server per API-Key, Server hinter Cloudflare Access per Service Token oder
+lokale SQLite ohne Sync. Die `api.php` verlangt den **API-Key in jedem Fall**
+— auch hinter mTLS und auch hinter Access.
+
+Der Cloudflare-Modus (seit 2.1.0) sendet zusätzlich `CF-Access-Client-Id` und
+`CF-Access-Client-Secret` (Prefs-Schlüssel `cf_access_client_id`,
+`cf_access_client_secret`). Beide Hälften gehen nur gemeinsam raus — ein
+halbes Token weist Cloudflare genauso ab wie gar keines.
+
+**Access-Abweisung:** Ohne gültiges Token antwortet Cloudflare nicht mit
+einem Fehler, sondern leitet auf die Login-Seite des Teams um. OkHttp folgt
+dem, sodass eine HTML-Seite mit Status 200 ankommt. `ApiService` erkennt das
+am Host der finalen Anfrage (Subdomain von `cloudflareaccess.com`) bzw. an
+einem 403 mit `cf-ray`-Header und meldet es als Token-Problem. Die Uhr ist
+davon nicht betroffen: sie spricht hier ausschliesslich über das Telefon.
+
+## Offline-Betrieb
+
+Bricht die Verbindung weg, bleibt die App benutzbar. `OfflineService` legt
+sich dafür über die Server-Quelle (nur in den Server-Modi, nicht im Demo).
+
+**Lesen:** Nach jedem erfolgreichen Laden liegt die Statistik als JSON in
+`filesDir/offline/`. Scheitert das Laden an einem Netzwerkfehler, zeigt die
+App diesen Stand statt einer Fehlerseite.
+
+**Schreiben:** Ein Eintrag, der nicht rausging, landet in einer Warteschlange
+und geht raus, sobald die Verbindung steht. In die Warteschlange darf er
+**nur** bei `UnknownHostException`, `ConnectException`,
+`NoRouteToHostException` oder `SSLException` — dann hat er den Server
+nachweislich nie erreicht. Ein `SocketTimeout` oder jede andere `IOException`
+bleibt mehrdeutig: Der Server könnte den Eintrag längst haben, ein zweiter
+Versuch legte dann einen zweiten an.
+
+**`undoLast` wird bewusst nicht vorgemerkt.** Wartet noch ein Eintrag, nimmt
+die App ihn direkt aus der Warteschlange — das ist eindeutig der zuletzt
+erfasste. Ist die Warteschlange leer, muss der Server ran; offline meldet das
+einen Fehler. Grund: Die API kennt für `undoLast` keine ID, beim Nachholen
+träfe es womöglich einen Eintrag, den jemand anders inzwischen angelegt hat.
+
+**Statistik.** Wartende Einträge erhöhen die Gesamtzahlen der Zeiträume und
+setzen den „letzten Eintrag“. Die Prozentanteile bleiben, wie der Server sie
+gemeldet hat: Sie liessen sich nur aus Rohdaten neu berechnen, die die API
+nicht liefert.
+
+**Abgearbeitet** wird vor jedem Laden und sobald der `ConnectivityManager`
+wieder ein Netz meldet. Beim ersten Verbindungsfehler bricht der Durchlauf
+ab, der Rest bleibt in der Reihenfolge stehen. Vom Server inhaltlich
+zurückgewiesene Einträge fliegen raus und werden einmal gemeldet. Geschrieben
+wird über eine Nebendatei mit anschliessendem Umbenennen, damit ein Absturz
+mitten im Schreiben nicht die halbe Warteschlange hinterlässt.
+
+Die Ablage hängt am Zugang (Modus + Basis-URL). Die Uhr bleibt aussen vor:
+sie führt eine eigene Outbox.
 
 ## Watch-Protokoll (Data-Layer-API)
 
