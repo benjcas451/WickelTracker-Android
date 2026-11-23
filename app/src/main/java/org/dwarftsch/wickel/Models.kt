@@ -1,10 +1,5 @@
 package org.dwarftsch.wickel
 
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.JoinFull
-import androidx.compose.material.icons.filled.Icecream
-import androidx.compose.material.icons.filled.WaterDrop
-import androidx.compose.ui.graphics.vector.ImageVector
 import java.time.Instant
 import java.time.LocalDateTime
 import java.time.OffsetDateTime
@@ -12,20 +7,14 @@ import java.time.ZoneId
 
 /**
  * Art des Wickel-Eintrags. [apiValue] ist exakt der String, den die API
- * erwartet bzw. liefert (urin, stuhlgang, beides). Die Farbzuordnung
- * (Honig/Grau/Flieder) liegt im Theme (ui/Theme.kt).
+ * erwartet bzw. liefert (urin, stuhlgang, beides). [label] ist die Anzeige
+ * wie auf der Webseite. Datenfarben und Reihenfolge der Anzeige liegen in
+ * ui/WickelTyp.kt.
  */
 enum class WickelType(val label: String, val apiValue: String) {
     URIN("Urin", "urin"),
-    STUHLGANG("Stuhlgang", "stuhlgang"),
-    BEIDES("Beides", "beides");
-
-    val icon: ImageVector
-        get() = when (this) {
-            URIN -> Icons.Filled.WaterDrop
-            STUHLGANG -> Icons.Filled.Icecream
-            BEIDES -> Icons.Filled.JoinFull
-        }
+    STUHLGANG("Nur Stuhlgang", "stuhlgang"),
+    BEIDES("Urin + Stuhlgang", "beides");
 
     companion object {
         fun fromApi(value: String?): WickelType =

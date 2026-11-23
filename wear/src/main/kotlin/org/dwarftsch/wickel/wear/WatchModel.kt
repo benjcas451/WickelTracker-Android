@@ -43,7 +43,7 @@ class WatchModel(context: Context) {
     /** Umschaltfläche: nächster Eintrag ist eine Stoffwindel. */
     var stoffwindelActive by mutableStateOf(false)
 
-    /** Kurzbestätigung nach dem Anlegen („Urin ✓“). */
+    /** Kurzbestätigung nach dem Anlegen („Urin“, darunter „gespeichert“). */
     var bestaetigung by mutableStateOf<String?>(null)
         private set
 
@@ -92,7 +92,7 @@ class WatchModel(context: Context) {
                 uebernehmen(daten)
                 legtAn = null
                 stoffwindelActive = false
-                bestaetigung = label + if (stoffwindel) " · 🧷" else ""
+                bestaetigung = label + if (stoffwindel) " · Stoffwindel" else ""
             },
             onError = { meldung ->
                 legtAn = null

@@ -135,7 +135,7 @@ class HomeViewModel(application: Application) : AndroidViewModel(application) {
         viewModelScope.launch {
             runCatching { aktiverService.addEntry(type, stoffwindel = sw) }.fold(
                 onSuccess = {
-                    meldungenFlow.tryEmit("${type.label} gespeichert${if (sw) " · 🧷 Stoffwindel" else ""}")
+                    meldungenFlow.tryEmit("${type.label} eingetragen${if (sw) " · Stoffwindel" else ""}")
                     aktualisieren()
                 },
                 onFailure = { meldungenFlow.tryEmit("Fehler: ${it.meldung()}") },
@@ -148,7 +148,7 @@ class HomeViewModel(application: Application) : AndroidViewModel(application) {
         viewModelScope.launch {
             runCatching { aktiverService.undoLast() }.fold(
                 onSuccess = { entfernt ->
-                    meldungenFlow.tryEmit(if (entfernt) "Letzter Eintrag gelöscht" else "Kein Eintrag vorhanden")
+                    meldungenFlow.tryEmit(if (entfernt) "Eintrag entfernt" else "Kein Eintrag vorhanden")
                     aktualisieren()
                 },
                 onFailure = { meldungenFlow.tryEmit("Fehler: ${it.meldung()}") },
