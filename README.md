@@ -262,17 +262,27 @@ liegen unter `<Basis-URL>api.php`. Alle Antworten JSON.
 
 Lokale Tabelle: `entries(id, type, time, stoffwindel)`.
 
-## Design-System „Minze & Honig“ (v1.0)
+## Design-System „Minze & Honig“ 2.0
 
-Quelle der Wahrheit im Code: `app/…/ui/Theme.kt` (Telefon) und die
-Farbsektion in `wear/…/WickelWearApp.kt` (Uhr). Kernregeln wie in den
-Schwester-Repos (Weiß dominiert, Skalen 50–900, Pastell 300 nie als Text
-auf Weiß, Nunito, Radien 8/12/16/24/Pill, Dark-Grund `#1F2221`).
+Quelle der Wahrheit im Code: `app/…/ui/MhTheme.kt` (Rollen hell/dunkel,
+Figtree-Typo, Radien, Abstände) und `app/…/ui/MhBausteine.kt` (Kopf,
+Buttons, Listen, Hinweise …) aus dem Bausatz des Design-Guides, dazu
+`app/…/ui/WickelBausteine.kt` (Eintragszeilen, Typ-Punkte, Schalter).
+Die Uhr nutzt `wear/…/ui/MhTheme.kt` (nur die Dunkel-Rollen, Figtree).
+Komponenten benutzen nur Rollen (`Mh.farben.*`), nie Skalenwerte.
 
-**Wickel-Typen (Chip-Muster, plattformübergreifend identisch):**
-Urin = Honig, Stuhlgang = Grau, Beides = Flieder; die
-**Stoffwindel-Funktion trägt Minze** (Fläche 300 + Text 900; zarte
-100er-Flächen bzw. Dark-Äquivalente für Avatare und Balkengrund).
+Kernregeln: Farbe ist Signal, keine Fläche; eine Hauptaktion je Ansicht;
+Haarlinien statt Karten mit Schatten; Figtree nur 400/500/600; eigene
+Liniensymbole (`res/drawable/ic_mh_*.xml`) statt Emojis und Material-Icons;
+Dunkelmodus mit Grund `#1F2221`, Flächen `#262A28`, Linien `#343A36`.
+
+**Wickel-Typen (wie auf der Webseite):** Urin = `data2` (Honig),
+Urin + Stuhlgang = halb Honig, halb Minze (Balken `data1`),
+Nur Stuhlgang = `data3` (Flieder) – immer als Punkt bzw. 4-dp-Balken
+neben Text oder Zahl.
+
+Schrift: Figtree (SIL OFL), Lizenz in `licenses/Figtree-OFL.txt` und in den
+App-Assets (`OFL_FIGTREE.txt`).
 
 ## Sicherheit / was nie ins Repo darf
 

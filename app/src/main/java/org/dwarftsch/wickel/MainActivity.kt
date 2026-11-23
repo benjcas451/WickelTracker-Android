@@ -13,14 +13,14 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import org.dwarftsch.wickel.ui.HomeScreen
 import org.dwarftsch.wickel.ui.HomeViewModel
 import org.dwarftsch.wickel.ui.SettingsScreen
-import org.dwarftsch.wickel.ui.WickelTheme
+import org.dwarftsch.wickel.ui.MhTheme
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
         setContent {
-            WickelTheme {
+            MhTheme {
                 val viewModel: HomeViewModel = viewModel()
                 // rememberSaveable: legt Android die Activity neu an (Drehen,
                 // Dark-Mode-Wechsel, Rueckkehr aus dem Datei-Dialog), bleibt

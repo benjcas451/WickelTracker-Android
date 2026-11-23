@@ -16,7 +16,6 @@ activityCompose = "1.13.0"
 # ui/runtime auf 1.9.x hoch, waehrend material3 foundation/animation auf 1.7.0
 # festhielt - ein gemischter Compose-Stack, den androidx nicht unterstuetzt.
 composeBom = "2025.11.01"
-composeIcons = "1.7.8"
 lifecycle = "2.8.7"
 coroutines = "1.9.0"
 okhttp = "4.12.0"
@@ -37,9 +36,6 @@ androidx-compose-bom = { group = "androidx.compose", name = "compose-bom", versi
 androidx-compose-material3 = { group = "androidx.compose.material3", name = "material3" }
 androidx-compose-foundation = { group = "androidx.compose.foundation", name = "foundation" }
 androidx-compose-ui = { group = "androidx.compose.ui", name = "ui" }
-# Die Icons folgen einem eigenen Versionsstrang (1.7.8 ist der letzte Stand)
-# und stehen deshalb nicht in der BOM.
-androidx-compose-icons-extended = { group = "androidx.compose.material", name = "material-icons-extended", version.ref = "composeIcons" }
 androidx-compose-ui-test-junit4 = { group = "androidx.compose.ui", name = "ui-test-junit4" }
 androidx-compose-ui-test-manifest = { group = "androidx.compose.ui", name = "ui-test-manifest" }
 androidx-test-core-ktx = { group = "androidx.test", name = "core-ktx", version.ref = "testCore" }

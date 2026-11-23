@@ -4,11 +4,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.Button
-import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 
@@ -21,26 +17,11 @@ fun LoeschDialog(
     onLoeschen: () -> Unit,
 ) {
     AlertDialog(
-        shape = MaterialTheme.shapes.extraLarge,
         onDismissRequest = onAbbrechen,
-        title = { Text(titel) },
-        text = { Text(text) },
-        confirmButton = {
-            Button(
-                onClick = onLoeschen,
-                shape = MaterialTheme.shapes.medium,
-                colors = ButtonDefaults.buttonColors(
-                    containerColor = MaterialTheme.colorScheme.errorContainer,
-                    contentColor = MaterialTheme.colorScheme.onErrorContainer,
-                ),
-            ) { Text("Löschen") }
-        },
-        dismissButton = {
-            TextButton(
-                onClick = onAbbrechen,
-                colors = ButtonDefaults.textButtonColors(contentColor = MinzeHonig.farben.gruenText),
-            ) { Text("Abbrechen") }
-        },
+        title = { Text(titel, style = MhTypo.h2, color = Mh.farben.textStrong) },
+        text = { Text(text, style = MhTypo.body, color = Mh.farben.text) },
+        confirmButton = { MhLoeschenButton("Löschen", onLoeschen) },
+        dismissButton = { MhTextButton("Abbrechen", onAbbrechen) },
     )
 }
 
@@ -52,19 +33,13 @@ fun InfoDialog(
     onSchliessen: () -> Unit,
 ) {
     AlertDialog(
-        shape = MaterialTheme.shapes.extraLarge,
         onDismissRequest = onSchliessen,
-        title = { Text(titel) },
+        title = { Text(titel, style = MhTypo.h2, color = Mh.farben.textStrong) },
         text = {
             Column(modifier = Modifier.verticalScroll(rememberScrollState())) {
-                Text(text)
+                Text(text, style = MhTypo.small, color = Mh.farben.text)
             }
         },
-        confirmButton = {
-            TextButton(
-                onClick = onSchliessen,
-                colors = ButtonDefaults.textButtonColors(contentColor = MinzeHonig.farben.gruenText),
-            ) { Text("Schließen") }
-        },
+        confirmButton = { MhTextButton("Schließen", onSchliessen) },
     )
 }

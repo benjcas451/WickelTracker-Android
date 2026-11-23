@@ -1,6 +1,5 @@
 package org.dwarftsch.wickel.ui
 
-import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -13,40 +12,14 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.Undo
-import androidx.compose.material.icons.filled.ErrorOutline
-import androidx.compose.material.icons.filled.History
-import androidx.compose.material.icons.filled.LocalLaundryService
-import androidx.compose.material.icons.filled.Refresh
-import androidx.compose.material.icons.filled.Settings
-import androidx.compose.material.icons.outlined.CloudOff
-import androidx.compose.material.icons.outlined.CloudUpload
-import androidx.compose.material3.Button
-import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
-import androidx.compose.material3.LinearProgressIndicator
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Snackbar
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
-import androidx.compose.material3.Switch
-import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
-import androidx.compose.material3.TopAppBar
-import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -57,13 +30,13 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import org.dwarftsch.wickel.LastEntry
 import org.dwarftsch.wickel.PeriodStats
-import org.dwarftsch.wickel.WickelStats
+import org.dwarftsch.wickel.R
 import org.dwarftsch.wickel.WickelType
 import java.time.Duration
 import java.time.Instant
@@ -87,29 +60,20 @@ fun HomeScreen(
 
     Scaffold(
         topBar = {
-            TopAppBar(
-                title = { Text("🧷 Wickel-Tracker") },
-                colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.background,
-                ),
-                actions = {
-                    IconButton(onClick = viewModel::aktualisieren) {
-                        Icon(Icons.Filled.Refresh, contentDescription = "Aktualisieren")
-                    }
-                    IconButton(onClick = onEinstellungen) {
-                        Icon(Icons.Filled.Settings, contentDescription = "Einstellungen")
-                    }
+            MhKopf(
+                titel = "Wickel-Tracker",
+                symbole = {
+                    MhSymbolButton(R.drawable.ic_mh_refresh, "Aktualisieren", viewModel::aktualisieren)
+                    MhSymbolButton(R.drawable.ic_mh_sliders, "Einstellungen", onEinstellungen)
                 },
             )
         },
-        snackbarHost = {
-            SnackbarHost(snackbar) { daten -> Snackbar(daten) }
-        },
+        snackbarHost = { SnackbarHost(snackbar) },
+        containerColor = Mh.farben.bg,
     ) { innenAbstand ->
         Box(modifier = Modifier.padding(innenAbstand).fillMaxSize()) {
             when {
-                state.laedt && state.stats == null && state.fehler == null ->
-                    CircularProgressIndicator(modifier = Modifier.align(Alignment.Center))
+                state.laedt && state.stats == null && state.fehler == null -> MhLaden()
 
                 state.fehler != null ->
                     FehlerAnsicht(
@@ -135,8 +99,8 @@ fun HomeScreen(
 
     if (zeigeUndoNachfrage) {
         LoeschDialog(
-            titel = "Letzten Eintrag löschen?",
-            text = "Der zuletzt angelegte Wickel-Eintrag wird entfernt.",
+            titel = "Letzten Eintrag löschen",
+            text = "Der zuletzt angelegte Eintrag wird entfernt.",
             onAbbrechen = { zeigeUndoNachfrage = false },
             onLoeschen = {
                 zeigeUndoNachfrage = false
@@ -148,7 +112,6 @@ fun HomeScreen(
 
 // --- Inhalt ------------------------------------------------------------------
 
-@OptIn(ExperimentalLayoutApi::class)
 @Composable
 private fun Inhalt(
     state: HomeUiState,
@@ -158,274 +121,181 @@ private fun Inhalt(
 ) {
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
-        contentPadding = PaddingValues(16.dp),
+        contentPadding = PaddingValues(start = Mh.rand, end = Mh.rand, top = Mh.abstand1, bottom = Mh.abstand8),
     ) {
         // Offline-Hinweis über allem: der Nutzer soll sofort sehen, dass er
         // zwar weiterarbeiten kann, der Stand aber noch nicht beim Server ist.
         if (state.offlineGrund != null || state.ausstehend > 0) {
             item(key = "offline") {
-                OfflineBanner(grund = state.offlineGrund, ausstehend = state.ausstehend)
-                Spacer(Modifier.height(12.dp))
+                OfflineHinweis(grund = state.offlineGrund, ausstehend = state.ausstehend)
+                Spacer(Modifier.height(Mh.abstand4))
             }
         }
-        state.stats?.let { stats ->
-            item(key = "zuletzt") {
-                LetzterEintragKarte(
-                    last = stats.last,
-                    stoffwindelEnabled = state.stoffwindelEnabled,
+
+        if (state.stoffwindelEnabled) {
+            item(key = "stoffwindel") {
+                MhSchalterZeile(
+                    titel = "Stoffwindel",
+                    an = state.stoffwindelActive,
+                    onWechsel = onStoffwindel,
+                    symbol = R.drawable.ic_mh_diaper,
                 )
+                Spacer(Modifier.height(Mh.abstand2))
             }
         }
 
         item(key = "eingabe") {
-            Spacer(Modifier.height(16.dp))
-            Text("Neuer Eintrag", style = MaterialTheme.typography.titleMedium)
-            Spacer(Modifier.height(10.dp))
-            if (state.stoffwindelEnabled) {
-                StoffwindelSchalter(
-                    aktiv = state.stoffwindelActive,
-                    onWechsel = onStoffwindel,
-                )
-                Spacer(Modifier.height(8.dp))
-            }
-            FlowRow(
-                horizontalArrangement = Arrangement.spacedBy(10.dp),
-                verticalArrangement = Arrangement.spacedBy(10.dp),
-            ) {
-                WickelType.entries.forEach { type ->
-                    // Kategorie-Buttons nach dem Chip-Muster: Pastellfläche (300)
-                    // mit 900er-Text, Radius 12, Höhe 44 (Touch-Minimum).
-                    Button(
-                        onClick = { onAnlegen(type) },
-                        shape = MaterialTheme.shapes.medium,
-                        modifier = Modifier.height(44.dp),
-                        colors = ButtonDefaults.buttonColors(
-                            containerColor = type.buttonFlaeche(),
-                            contentColor = type.buttonInhalt(),
-                        ),
-                    ) {
-                        Icon(type.icon, contentDescription = null, modifier = Modifier.size(20.dp))
-                        Spacer(Modifier.width(6.dp))
-                        Text(type.label)
-                    }
+            Column(verticalArrangement = Arrangement.spacedBy(Mh.abstand2)) {
+                WickelTypReihenfolge.forEach { type ->
+                    WickelEintragZeile(type, onClick = { onAnlegen(type) })
                 }
             }
-            Spacer(Modifier.height(10.dp))
-            OutlinedButton(
-                onClick = onLetztenRueckgaengig,
-                shape = MaterialTheme.shapes.medium,
+            val last = state.stats?.last
+            Row(
+                modifier = Modifier.fillMaxWidth().padding(top = Mh.abstand2),
+                verticalAlignment = Alignment.CenterVertically,
             ) {
-                Icon(
-                    Icons.AutoMirrored.Filled.Undo,
-                    contentDescription = null,
-                    modifier = Modifier.size(18.dp),
+                Text(
+                    if (last?.isEmpty == true) "Kein Eintrag vorhanden" else "Letzten Eintrag zurücknehmen",
+                    style = MhTypo.small,
+                    color = Mh.farben.textSecondary,
+                    modifier = Modifier.weight(1f).padding(start = 2.dp),
                 )
-                Spacer(Modifier.width(6.dp))
-                Text("Letzten rückgängig")
+                MhLoeschenButton(
+                    "Rückgängig",
+                    onLetztenRueckgaengig,
+                    symbol = R.drawable.ic_mh_undo,
+                    enabled = last?.isEmpty != true,
+                )
             }
         }
 
         state.stats?.let { stats ->
-            item(key = "stats") {
-                Spacer(Modifier.height(24.dp))
-                Text("Statistik", style = MaterialTheme.typography.titleMedium)
-                Spacer(Modifier.height(10.dp))
-                PeriodenKarte("Heute", stats.today, state.stoffwindelEnabled, hervorgehoben = true)
-                Spacer(Modifier.height(8.dp))
-                PeriodenKarte("Letzte 7 Tage", stats.week, state.stoffwindelEnabled)
-                Spacer(Modifier.height(8.dp))
-                PeriodenKarte("Letzte 3 Wochen", stats.threeWeeks, state.stoffwindelEnabled)
-                Spacer(Modifier.height(8.dp))
-                PeriodenKarte("Letzte 30 Tage", stats.month, state.stoffwindelEnabled)
+            item(key = "zuletzt") {
+                LetzterEintrag(last = stats.last, stoffwindelEnabled = state.stoffwindelEnabled)
             }
-        }
-    }
-}
-
-// --- Stoffwindel-Schalter --------------------------------------------------------
-
-@Composable
-private fun StoffwindelSchalter(aktiv: Boolean, onWechsel: (Boolean) -> Unit) {
-    Card(
-        modifier = Modifier.fillMaxWidth(),
-        shape = MaterialTheme.shapes.large,
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
-    ) {
-        Row(
-            modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            Icon(
-                Icons.Filled.LocalLaundryService,
-                contentDescription = null,
-                modifier = Modifier.size(20.dp),
-                tint = if (aktiv) stoffwindelAkzent() else MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-            Spacer(Modifier.width(12.dp))
-            Text("Stoffwindel", modifier = Modifier.weight(1f))
-            Switch(
-                checked = aktiv,
-                onCheckedChange = onWechsel,
-                colors = SwitchDefaults.colors(
-                    checkedTrackColor = Mh.gruen300,
-                    checkedThumbColor = Mh.gruen900,
-                ),
-            )
+            item(key = "stats") {
+                PeriodenBlock("Heute", stats.today, state.stoffwindelEnabled)
+                PeriodenBlock("Letzte 7 Tage", stats.week, state.stoffwindelEnabled)
+                PeriodenBlock("Letzte 21 Tage", stats.threeWeeks, state.stoffwindelEnabled)
+                PeriodenBlock("Letzte 30 Tage", stats.month, state.stoffwindelEnabled)
+            }
         }
     }
 }
 
 // --- Letzter Eintrag -------------------------------------------------------------
 
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
-private fun LetzterEintragKarte(last: LastEntry, stoffwindelEnabled: Boolean) {
-    Card(
-        modifier = Modifier.fillMaxWidth(),
-        shape = MaterialTheme.shapes.large,
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
-    ) {
-        Row(
-            modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp),
-            verticalAlignment = Alignment.CenterVertically,
+private fun LetzterEintrag(last: LastEntry, stoffwindelEnabled: Boolean) {
+    val f = Mh.farben
+    Column(Modifier.fillMaxWidth().padding(top = Mh.abstand6)) {
+        MhTrennlinie()
+        // Zeitangabe rechts; reicht der Platz nicht (große Schrift), rutscht
+        // sie in die nächste Zeile.
+        FlowRow(
+            modifier = Modifier.fillMaxWidth().padding(vertical = Mh.abstand4),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            itemVerticalAlignment = Alignment.Bottom,
         ) {
-            val type = last.type
-            // Avatar nach dem Hinweis-Muster: zarte 100er-Fläche,
-            // Icon in der text-tauglichen 700er-Stufe (Dark: 300er).
-            Box(
-                modifier = Modifier
-                    .size(40.dp)
-                    .background(
-                        type?.avatarFlaeche() ?: MaterialTheme.colorScheme.surfaceVariant,
-                        CircleShape,
-                    ),
-                contentAlignment = Alignment.Center,
-            ) {
-                Icon(
-                    type?.icon ?: Icons.Filled.History,
-                    contentDescription = null,
-                    tint = type?.akzent() ?: MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-            }
-            Spacer(Modifier.width(14.dp))
-            Column {
+            Column(Modifier.padding(end = Mh.abstand3)) {
+                Text("Letzter Eintrag", style = MhTypo.label, color = f.textSecondary)
+                Spacer(Modifier.height(Mh.abstand1))
+                val type = last.type
                 if (type == null) {
-                    Text("Noch kein Eintrag", style = MaterialTheme.typography.bodyLarge)
-                    Text(
-                        "Lege unten den ersten Wickel-Vorgang an.",
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
+                    Text("Noch kein Eintrag", style = MhTypo.body, color = f.textSecondary)
                 } else {
-                    Text("Zuletzt: ${type.label}", style = MaterialTheme.typography.bodyLarge)
-                    last.time?.let { zeit ->
-                        val suffix = if (stoffwindelEnabled && last.stoffwindel) " · 🧷 Stoffwindel" else ""
-                        Text(
-                            "${tagesLabel(zeit)} um ${hhmm(zeit)} · ${relativ(zeit)}$suffix",
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        )
+                    // FlowRow: die Marke rutscht bei großer Schrift in die
+                    // nächste Zeile, statt umzubrechen.
+                    FlowRow(
+                        horizontalArrangement = Arrangement.spacedBy(10.dp),
+                        verticalArrangement = Arrangement.spacedBy(Mh.abstand1),
+                        itemVerticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(10.dp),
+                        ) {
+                            WickelTypPunkt(type)
+                            Text(
+                                type.label,
+                                style = MhTypo.body.copy(fontWeight = FontWeight.Medium),
+                                color = f.textStrong,
+                            )
+                        }
+                        if (stoffwindelEnabled && last.stoffwindel) MhMarke("Stoffwindel")
                     }
                 }
             }
+            last.time?.let { zeit ->
+                Text(
+                    "${relativ(zeit)} · ${absolut(zeit)}",
+                    style = MhTypo.small.copy(fontFeatureSettings = "tnum"),
+                    color = f.textSecondary,
+                    textAlign = TextAlign.End,
+                )
+            }
         }
+        MhTrennlinie()
     }
 }
 
 // --- Statistik ---------------------------------------------------------------------
 
 @Composable
-private fun PeriodenKarte(
-    titel: String,
-    periode: PeriodStats,
-    stoffwindelEnabled: Boolean,
-    hervorgehoben: Boolean = false,
-) {
-    Card(
-        modifier = Modifier.fillMaxWidth(),
-        shape = MaterialTheme.shapes.large,
-        colors = CardDefaults.cardColors(
-            // "Heute" hervorgehoben als zarte Minze-100-Fläche (Dark-Äquivalent).
-            containerColor = if (hervorgehoben) {
-                MaterialTheme.colorScheme.primaryContainer
-            } else {
-                MaterialTheme.colorScheme.surface
-            },
-        ),
-        elevation = CardDefaults.cardElevation(defaultElevation = if (hervorgehoben) 0.dp else 2.dp),
-    ) {
-        Column(modifier = Modifier.padding(16.dp)) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-            ) {
-                Text(titel, style = MaterialTheme.typography.titleSmall)
-                Text(
-                    "${periode.total} gesamt",
-                    style = MaterialTheme.typography.titleSmall,
-                    fontWeight = FontWeight.ExtraBold,
-                )
-            }
-            Spacer(Modifier.height(12.dp))
-            for (type in WickelType.entries) {
-                ProzentZeile(
-                    icon = { Icon(type.icon, contentDescription = null, modifier = Modifier.size(18.dp), tint = type.akzent()) },
-                    label = type.label,
-                    pct = periode.pctOf(type),
-                    balkenFarbe = type.akzent(),
-                    balkenGrund = type.avatarFlaeche(),
-                )
-                Spacer(Modifier.height(8.dp))
-            }
-            if (stoffwindelEnabled) {
-                ProzentZeile(
-                    icon = {
-                        Icon(
-                            Icons.Filled.LocalLaundryService,
-                            contentDescription = null,
-                            modifier = Modifier.size(18.dp),
-                            tint = stoffwindelAkzent(),
-                        )
-                    },
-                    label = "Stoffwindel",
-                    pct = periode.stoffwindelPct,
-                    balkenFarbe = stoffwindelAkzent(),
-                    balkenGrund = stoffwindelFlaeche(),
-                )
-            }
-        }
+private fun PeriodenBlock(titel: String, periode: PeriodStats, stoffwindelEnabled: Boolean) {
+    MhGruppenLabel(
+        titel,
+        rechts = if (periode.total == 1) "1 Eintrag" else "${periode.total} Einträge",
+        modifier = Modifier.padding(top = Mh.abstand2),
+    )
+    for (type in WickelTypReihenfolge) {
+        ProzentZeile(
+            punkt = { WickelTypPunkt(type) },
+            label = type.label,
+            pct = periode.pctOf(type),
+            farbe = type.datenFarbe(),
+        )
+    }
+    if (stoffwindelEnabled) {
+        ProzentZeile(
+            punkt = { Spacer(Modifier.width(10.dp)) },
+            label = "Stoffwindel",
+            pct = periode.stoffwindelPct,
+            farbe = Mh.farben.textTertiary,
+        )
     }
 }
 
 @Composable
 private fun ProzentZeile(
-    icon: @Composable () -> Unit,
+    punkt: @Composable () -> Unit,
     label: String,
     pct: Int,
-    balkenFarbe: androidx.compose.ui.graphics.Color,
-    balkenGrund: androidx.compose.ui.graphics.Color,
+    farbe: Color,
 ) {
-    Row(verticalAlignment = Alignment.CenterVertically) {
-        icon()
-        Spacer(Modifier.width(8.dp))
-        Text(label, modifier = Modifier.width(92.dp), style = MaterialTheme.typography.bodyMedium)
-        LinearProgressIndicator(
-            progress = { pct / 100f },
-            modifier = Modifier
-                .weight(1f)
-                .height(8.dp)
-                .clip(RoundedCornerShape(6.dp)),
-            color = balkenFarbe,
-            trackColor = balkenGrund,
-            drawStopIndicator = {},
-        )
-        Spacer(Modifier.width(8.dp))
+    val f = Mh.farben
+    Row(
+        modifier = Modifier.fillMaxWidth().padding(vertical = 7.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(10.dp),
+    ) {
+        Row(
+            modifier = Modifier.weight(1.35f),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(10.dp),
+        ) {
+            punkt()
+            Text(label, style = MhTypo.small, color = f.text)
+        }
+        MhBalken(pct / 100f, Modifier.weight(1f), farbe = farbe)
         Text(
             "$pct%",
-            modifier = Modifier.width(40.dp),
+            modifier = Modifier.widthIn(min = 44.dp),
             textAlign = TextAlign.End,
-            style = MaterialTheme.typography.bodyMedium,
+            style = MhTypo.small.copy(fontFeatureSettings = "tnum"),
+            color = f.textSecondary,
         )
     }
 }
@@ -435,95 +305,64 @@ private fun ProzentZeile(
 @Composable
 private fun FehlerAnsicht(meldung: String, onErneut: () -> Unit) {
     Column(
-        modifier = Modifier.fillMaxSize().padding(32.dp),
+        modifier = Modifier.fillMaxSize().padding(Mh.abstand8),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center,
     ) {
-        Icon(
-            Icons.Filled.ErrorOutline,
-            contentDescription = null,
-            tint = MaterialTheme.colorScheme.error,
-            modifier = Modifier.size(56.dp),
-        )
-        Spacer(Modifier.height(16.dp))
-        Text(meldung, textAlign = TextAlign.Center)
-        Spacer(Modifier.height(24.dp))
-        Button(onClick = onErneut, shape = MaterialTheme.shapes.medium) {
-            Icon(Icons.Filled.Refresh, contentDescription = null, modifier = Modifier.size(18.dp))
-            Spacer(Modifier.width(6.dp))
-            Text("Erneut versuchen")
-        }
-    }
-}
-
-// --- Datums-Helfer ---------------------------------------------------------------
-
-internal fun hhmm(zeit: Instant): String =
-    DateTimeFormatter.ofPattern("HH:mm").withZone(ZoneId.systemDefault()).format(zeit)
-
-internal fun tagesLabel(zeit: Instant): String {
-    val heute = LocalDate.now()
-    val tag = zeit.atZone(ZoneId.systemDefault()).toLocalDate()
-    return when (heute.toEpochDay() - tag.toEpochDay()) {
-        0L -> "Heute"
-        1L -> "Gestern"
-        else -> tag.format(DateTimeFormatter.ofPattern("dd.MM.yyyy"))
-    }
-}
-
-/** „vor X min/h/d“ – wie in der Flutter-App. */
-internal fun relativ(zeit: Instant): String {
-    val differenz = Duration.between(zeit, Instant.now())
-    return when {
-        differenz.toMinutes() < 1 -> "gerade eben"
-        differenz.toMinutes() < 60 -> "vor ${differenz.toMinutes()} min"
-        differenz.toHours() < 24 -> "vor ${differenz.toHours()} h"
-        else -> "vor ${differenz.toDays()} d"
+        MhSymbol(R.drawable.ic_mh_alert, null, groesse = 32.dp, farbe = Mh.farben.danger)
+        Spacer(Modifier.height(Mh.abstand4))
+        Text(meldung, style = MhTypo.body, color = Mh.farben.text, textAlign = TextAlign.Center)
+        Spacer(Modifier.height(Mh.abstand6))
+        MhHauptButton("Erneut versuchen", onErneut, symbol = R.drawable.ic_mh_refresh)
     }
 }
 
 /**
- * Hinweisleiste über dem Inhalt: Verbindung weg, App weiter benutzbar.
+ * Hinweis über dem Inhalt: Verbindung weg, App weiter benutzbar.
  *
  * [grund] null bedeutet „wieder online, aber es wartet noch etwas auf die
  * Übertragung“.
  */
 @Composable
-private fun OfflineBanner(grund: String?, ausstehend: Int) {
+private fun OfflineHinweis(grund: String?, ausstehend: Int) {
     val titel = if (grund == null) "Übertragung läuft" else "Offline-Modus – $grund"
-    val untertitel = when (ausstehend) {
+    val text = when (ausstehend) {
         0 -> "Angezeigt wird der zuletzt geladene Stand."
         1 -> "Ein Eintrag wartet auf die Übertragung und geht raus, sobald die Verbindung steht."
         else ->
             "$ausstehend Einträge warten auf die Übertragung und gehen raus, " +
                 "sobald die Verbindung steht."
     }
-    Card(
-        modifier = Modifier.fillMaxWidth(),
-        shape = MaterialTheme.shapes.large,
-        colors = CardDefaults.cardColors(containerColor = MinzeHonig.farben.hinweisFlaeche),
-    ) {
-        Row(modifier = Modifier.padding(12.dp), verticalAlignment = Alignment.Top) {
-            Icon(
-                if (grund == null) Icons.Outlined.CloudUpload else Icons.Outlined.CloudOff,
-                contentDescription = null,
-                tint = MinzeHonig.farben.hinweis,
-                modifier = Modifier.size(20.dp),
-            )
-            Spacer(Modifier.width(10.dp))
-            Column {
-                Text(
-                    titel,
-                    style = MaterialTheme.typography.bodyMedium,
-                    fontWeight = FontWeight.Bold,
-                    color = MinzeHonig.farben.hinweis,
-                )
-                Text(
-                    untertitel,
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MinzeHonig.farben.hinweis,
-                )
-            }
+    MhHinweis(
+        text = text,
+        titel = titel,
+        art = MhHinweisArt.Warnung,
+        symbol = if (grund == null) R.drawable.ic_mh_upload else R.drawable.ic_mh_cloud_off,
+    )
+}
+
+// --- Datums-Helfer ---------------------------------------------------------------
+
+/** „vor 5 Min.“, „vor 3 Std.“, „vor 2 Tagen“ – wie auf der Webseite. */
+internal fun relativ(zeit: Instant): String {
+    val sekunden = Duration.between(zeit, Instant.now()).seconds
+    return when {
+        sekunden < 60 -> "gerade eben"
+        sekunden < 3600 -> "vor ${sekunden / 60} Min."
+        sekunden < 86400 -> "vor ${sekunden / 3600} Std."
+        else -> {
+            val tage = sekunden / 86400
+            if (tage == 1L) "vor 1 Tag" else "vor $tage Tagen"
         }
+    }
+}
+
+/** Heute „08:24 Uhr“, sonst „21.11., 08:24“ – wie auf der Webseite. */
+internal fun absolut(zeit: Instant): String {
+    val lokal = zeit.atZone(ZoneId.systemDefault())
+    return if (lokal.toLocalDate() == LocalDate.now()) {
+        lokal.format(DateTimeFormatter.ofPattern("HH:mm")) + " Uhr"
+    } else {
+        lokal.format(DateTimeFormatter.ofPattern("dd.MM., HH:mm"))
     }
 }
